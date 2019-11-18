@@ -1,59 +1,119 @@
 const express = require("express");
-const app = express();
-const hbs = require("hbs");
-const expressHbs = require("express-handlebars");
+const bodyParser = require("body-parser");
+const fs = require("fs");
 
-// app.engine("hbs", expressHbs({
-//   layoutsDir: "views/layouts",
-//   defaultLayout: "layout",
-//   extname: "hbs"
-// }))
+let app = express();
+let jsonParser = bodyParser.json();
 
-hbs.registerHelper("getTime", function(){
-     
-  var myDate = new Date();
-  var hour = myDate.getHours();
-  var minute = myDate.getMinutes();
-  var second = myDate.getSeconds();
-  if (minute < 10) {
-      minute = "0" + minute;
-  }
-  if (second < 10) {
-      second = "0" + second;
-  }
-  return "Текущее время: " + hour + ":" + minute + ":" + second;
-});
+app.use(express.static(__dirname + "/public"));
 
-hbs.registerHelper("createStringList", function(array){
-     
-  var result="";
-  for(var i=0; i<array.length; i++){
-      result +="<li>" + array[i] + "</li>";
-  }
-  return new hbs.SafeString("<ul>" + result + "</ul>");
-});
+app.get("/api/users", function(req, res){
 
-app.set("view engine", "hbs");
-//app.set("views", "views");
-//hbs.registerPartials(__dirname + "/views/partials");
-
-app.use("/contact", function(request, response){
-
-  response.render("contact.hbs", {
-    title: "Мои контакты",
-    emailsVisible: true,
-    emails: ["gavgav@mycorp.com", "mioaw@mycorp.com"],
-    phone: "+1234567890"
-});
+  var content = fs.readFileSync("users.json", "utf8");
+  var users = JSON.parse(content);
+  res.send(users);
 
 });
 
-app.use("/", function(request, response){
+app.get("/api/users/:id", function(req, res){
 
-  response.render("home.hbs", { 
-    fruit: [ "apple", "lemon", "banana", "grape"]
+  var id = req.params.id;
+  var content = fs.readFileSync("users.json", "utf8");
+  var users = JSON.parse(content);
+  let user = null;
+
+  users.map(function(u) {
+    if (u.id == id) {
+      return user = u;
+    }
   });
 
+  if(user) {
+    res.send(user);
+  }
+  else {
+    res.status(404).send();
+  }
+
 });
 
-app.listen(3000);
+app.post("/api/users", jsonParser, function(req, res){
+  if(!req.body) return res.sendStatus(400);
+
+  var userName = req.body.name;
+  var userAge = req.body.age;
+  var user = {name: userName, age: userAge};
+  var data = fs.readFileSync("users.json", "utf8");
+  var users = JSON.parse(data);
+
+  var id = Math.max.apply(Math, users.map(function(o){return o.id}));
+  user.id = id+1;
+  users.push(user);
+
+  var dataUpdated = JSON.stringify(users);
+  fs.writeFileSync("users.json", dataUpdated, "utf8");
+  res.send(user);
+
+});
+
+app.delete("/api/users/:id", function(req, res){
+
+  var id = req.params.id;
+  var data = fs.readFileSync("users.json", "utf8");
+  var users = JSON.parse(data);
+  var index = -1;
+
+  for(var i = 0; i < users.length; i++) {
+    if(users[i].id == id) {
+      index = i;
+      break; // !!!!!! always exit from FOR 
+    }
+  }
+
+  if(index > -1) {
+
+    var user = users.splice(index, 1)[0];
+    var data = JSON.stringify(users);
+    
+    fs.writeFileSync("users.json", data, "utf8");
+    res.send(user);
+  }
+  else {
+    res.status(404).send();
+  }
+
+});
+
+app.put("/api/users/", jsonParser, function(req, res){
+
+  var userId = req.body.id;
+  var userName = req.body.name;
+  var userAge = req.body.age;
+
+  var data = fs.readFileSync("users.json");
+  var users = JSON.parse(data);
+  var user = null;
+
+  users.map(function(u) {
+    if (u.id == userId) {
+      return user = u;
+    }
+  });
+
+  if(user){
+    user.age = userAge;
+    user.name = userName;
+
+    var data = JSON.stringify(users);
+    fs.writeFileSync("users.json", data, "utf8");
+    res.send(users);
+  }
+  else {
+    res.status(404).send();
+  }
+
+});
+
+app.listen(3000, function(){
+  console.log("waiting for connections");
+})
