@@ -36,3 +36,13 @@ it("should return Test", function(done){
         .end(done);
         
 });
+
+
+it("should return NotFound with status 404", function(done){
+     
+  request(app)
+      .get("/error")
+      .expect(400)
+      .expect("error")
+      .end(done);
+});

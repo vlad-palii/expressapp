@@ -120,6 +120,13 @@ app.get("/test", function(req, res){
 
 });
 
+app.get("/error", function(req, res){
+
+  res.status(400);
+  res.send("error");
+
+});
+
 app.listen(3000, function(){
   console.log("waiting for connections");
 })
