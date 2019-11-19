@@ -114,6 +114,14 @@ app.put("/api/users/", jsonParser, function(req, res){
 
 });
 
+app.get("/test", function(req, res){
+
+  res.send("test");
+
+});
+
 app.listen(3000, function(){
   console.log("waiting for connections");
 })
+
+module.exports.app = app;

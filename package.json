@@ -2,5 +2,9 @@
   "dependencies": {
     "body-parser": "^1.16.0",
     "express": "^4.14.0"
+  },
+  "devDependencies": {
+    "mocha": "^6.2.2",
+    "supertest": "^4.0.2"
   }
 }
