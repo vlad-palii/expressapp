@@ -1,134 +1,102 @@
 const express = require("express");
-const bodyParser = require("body-parser");
-const fs = require("fs");
+const MongoClient = require("mongodb").MongoClient;
+const objectId = require("mongodb").ObjectID;
 
-let app = express();
-let jsonParser = bodyParser.json();
+const app = express();
+const jsonParser = express.json();
 
-app.use(express.static(__dirname + "/public"));
+const mongoClient = new MongoClient("mongodb://localhost:27017/", { useNewUrlParser: true, useUnifiedTopology: true });
+
+let dbClient;
+
+app.use(express.static(__dirname + '/public'));
+
+mongoClient.connect(function(err, client){
+  if(err) return console.log(err);
+  dbClient = client;
+  app.locals.collection = client.db("usersdb").collection("users");
+  app.listen(3000, function(){
+      console.log("Сервер ожидает подключения...");
+  });
+});
+
 
 app.get("/api/users", function(req, res){
-
-  var content = fs.readFileSync("users.json", "utf8");
-  var users = JSON.parse(content);
-  res.send(users);
-
+        
+  const collection = req.app.locals.collection;
+  collection.find({}).toArray(function(err, users){
+       
+      if(err) return console.log(err);
+      res.send(users)
+  });
+   
 });
 
 app.get("/api/users/:id", function(req, res){
 
-  var id = req.params.id;
-  var content = fs.readFileSync("users.json", "utf8");
-  var users = JSON.parse(content);
-  let user = null;
+  const id = new objectId(req.params.id);
+  const collection = app.locals.collection;
 
-  users.map(function(u) {
-    if (u.id == id) {
-      return user = u;
-    }
-  });
+  collection.findOne({_id: id}, function(err, user){
 
-  if(user) {
+    if (err) return console.log(err);
+
     res.send(user);
-  }
-  else {
-    res.status(404).send();
-  }
 
-});
+  })
+
+})
 
 app.post("/api/users", jsonParser, function(req, res){
+
   if(!req.body) return res.sendStatus(400);
 
-  var userName = req.body.name;
-  var userAge = req.body.age;
-  var user = {name: userName, age: userAge};
-  var data = fs.readFileSync("users.json", "utf8");
-  var users = JSON.parse(data);
+  const userName = req.body.name;
+  const userAge = req.body.age;
+  const user = {name: userName, age: userAge};
 
-  var id = Math.max.apply(Math, users.map(function(o){return o.id}));
-  user.id = id+1;
-  users.push(user);
+  const collection = app.locals.collection;
+  collection.insertOne(user, function(err, result){
+    if(err) return console.log(err);
 
-  var dataUpdated = JSON.stringify(users);
-  fs.writeFileSync("users.json", dataUpdated, "utf8");
-  res.send(user);
+    res.send(user);
+  })
 
-});
+})
 
 app.delete("/api/users/:id", function(req, res){
 
-  var id = req.params.id;
-  var data = fs.readFileSync("users.json", "utf8");
-  var users = JSON.parse(data);
-  var index = -1;
+  const id = new objectId(req.params.id);
+  const collection = app.locals.collection;
+  collection.findOneAndDelete({_id: id}, function(err, result){
+    if(err) return console.log(err);
 
-  for(var i = 0; i < users.length; i++) {
-    if(users[i].id == id) {
-      index = i;
-      break; // !!!!!! always exit from FOR 
-    }
-  }
-
-  if(index > -1) {
-
-    var user = users.splice(index, 1)[0];
-    var data = JSON.stringify(users);
-    
-    fs.writeFileSync("users.json", data, "utf8");
+    let user = result.value;
     res.send(user);
-  }
-  else {
-    res.status(404).send();
-  }
+  })
 
-});
-
-app.put("/api/users/", jsonParser, function(req, res){
-
-  var userId = req.body.id;
-  var userName = req.body.name;
-  var userAge = req.body.age;
-
-  var data = fs.readFileSync("users.json");
-  var users = JSON.parse(data);
-  var user = null;
-
-  users.map(function(u) {
-    if (u.id == userId) {
-      return user = u;
-    }
-  });
-
-  if(user){
-    user.age = userAge;
-    user.name = userName;
-
-    var data = JSON.stringify(users);
-    fs.writeFileSync("users.json", data, "utf8");
-    res.send(users);
-  }
-  else {
-    res.status(404).send();
-  }
-
-});
-
-app.get("/test", function(req, res){
-
-  res.send("test");
-
-});
-
-app.get("/error", function(req, res){
-
-  res.status(400);
-  res.send("error");
-
-});
-
-app.listen(3000, function(){
-  console.log("waiting for connections");
 })
 
-module.exports.app = app;
+app.put("/api/users", jsonParser, function(req, res){
+        
+  if(!req.body) return res.sendStatus(400);
+  const id = new objectId(req.body.id);
+  const userName = req.body.name;
+  const userAge = req.body.age;
+     
+  const collection = req.app.locals.collection;
+  collection.findOneAndUpdate({_id: id}, { $set: {age: userAge, name: userName}},
+       {returnOriginal: false },function(err, result){
+             
+      if(err) return console.log(err);     
+      const user = result.value;
+      res.send(user);
+  });
+  
+});
+
+
+process.on("SIGINT", () => {
+  db.close();
+  process.exit();
+})
