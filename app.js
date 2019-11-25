@@ -1,25 +1,81 @@
 const express = require("express");
-const MongoClient = require("mongodb").MongoClient;
+//const MongoClient = require("mongodb").MongoClient;
 const objectId = require("mongodb").ObjectID;
+const mongoose = require("mongoose");
+const mysql = require("mysql2");
+
+const mysqlConnection = mysql.createConnection({
+  host: "localhost",
+  user: "picq",
+  password: "picq"
+});
+
+const Schema = mongoose.Schema;
+
+const userScheme = new Schema({
+  name: {
+      type: String,
+      required: true,
+      minlength:3,
+      maxlength:20
+  },
+  age: {
+      type: Number,
+      required: true,
+      min: 1,
+      max:100
+  }
+});
+
+// подключение
+mongoose.connect("mongodb://localhost:27017/usersdb", { useNewUrlParser: true, useUnifiedTopology: true });
+  
+const User = mongoose.model("User", userScheme);
+//const user = new User(); // name - NoName, age - 22
+const user = new User({name: "Tom", age: 99}); // name - Tom, age - 22
+const user3 = new User({age:34}); // name - NoName, age - 34
+
+user.save(function(err){
+  mongoose.disconnect();  // отключение от базы данных
+    
+  if(err) return console.log(err);
+  console.log("Сохранен объект", user);
+});
+
+User.find({}, function(err, docs){
+  mongoose.disconnect();
+   
+  if(err) return console.log(err);
+   
+  console.log(docs);
+});
+
+User.find({name: "Tom"}, function(err, docs){
+  mongoose.disconnect();
+   
+  if(err) return console.log(err);
+   
+  console.log(docs);
+});
+
+//const mongoClient = new MongoClient("mongodb://localhost:27017/", { useNewUrlParser: true, useUnifiedTopology: true });
+
+//let dbClient;
+
+// app.use(express.static(__dirname + '/public'));
+
+// mongoClient.connect(function(err, client){
+//   if(err) return console.log(err);
+//   dbClient = client;
+//   app.locals.collection = client.db("usersdb").collection("users");
+//   app.listen(3000, function(){
+//       console.log("Сервер ожидает подключения...");
+//   });
+// });
+
 
 const app = express();
 const jsonParser = express.json();
-
-const mongoClient = new MongoClient("mongodb://localhost:27017/", { useNewUrlParser: true, useUnifiedTopology: true });
-
-let dbClient;
-
-app.use(express.static(__dirname + '/public'));
-
-mongoClient.connect(function(err, client){
-  if(err) return console.log(err);
-  dbClient = client;
-  app.locals.collection = client.db("usersdb").collection("users");
-  app.listen(3000, function(){
-      console.log("Сервер ожидает подключения...");
-  });
-});
-
 
 app.get("/api/users", function(req, res){
         
@@ -95,6 +151,11 @@ app.put("/api/users", jsonParser, function(req, res){
   
 });
 
+mysqlConnection.connect((err) => {
+  if(err) return console.log(err.message)
+
+  console.log("success connection");
+})
 
 process.on("SIGINT", () => {
   db.close();
