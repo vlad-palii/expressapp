@@ -6,8 +6,9 @@ const mysql = require("mysql2");
 
 const mysqlConnection = mysql.createConnection({
   host: "localhost",
-  user: "picq",
-  password: "picq"
+  user: "root",
+  database: "usersdb",
+  password: "root"
 });
 
 const Schema = mongoose.Schema;
@@ -157,7 +158,26 @@ mysqlConnection.connect((err) => {
   console.log("success connection");
 })
 
+mysqlConnection.query("SELECT * FROM users",
+function(err, results, fields) {
+  console.log(err);
+  console.log("results", results); // собственно данные
+  console.log("meta data", fields); // мета-данные полей 
+});
+
+
+const sqluser = ["Tom"];
+const sql = "INSERT INTO users(name) VALUES(?)";
+ 
+mysqlConnection.query(sql, sqluser, function(err, results) {
+    if(err) console.log(err);
+    else console.log("Данные добавлены");
+});
+
+mysqlConnection.end();
+
 process.on("SIGINT", () => {
-  db.close();
+  //db.close();
+  mysqlConnection.destroy();
   process.exit();
 })
